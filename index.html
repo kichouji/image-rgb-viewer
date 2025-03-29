@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image RGB Viewer</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            color: #333;
+        }
+        table {
+            border-spacing: 20px;
+            background-color: #fff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            padding: 20px;
+        }
+        td {
+            vertical-align: top;
+        }
+        canvas {
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            display: block;
+        }
+        #bars {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-around;
+            align-items: flex-end;
+            gap: 10px;
+            height: 300px;
+        }
+        .bar {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+        .bar div {
+            width: 30px;
+            background-color: currentColor;
+            height: 0;
+            transition: height 0.1s;
+        }
+        #redBar div { color: red; }
+        #greenBar div { color: green; }
+        #blueBar div { color: blue; }
+        #colorComparison {
+            font-size: 14px;
+            background-color: #f9f9f9;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            width: 200px; /* Fixed width to prevent resizing */
+            min-height: 100px; /* Minimum height to prevent shaking */
+            overflow-wrap: break-word;
+        }
+        h2 {
+            margin: 0 0 10px;
+            font-size: 18px;
+            color: #444;
+        }
+        #dragDropArea {
+            border: 2px dashed #888;
+            border-radius: 5px;
+            padding: 10px;
+            text-align: center;
+            margin-top: 10px;
+            background-color: #fefefe;
+        }
+        #dragDropArea.hidden {
+            display: none;
+        }
+        input[type="file"] {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <table>
+        <tr>
+            <td rowspan="2">
+                <input type="file" id="imageInput" accept="image/*">
+                <canvas id="imageCanvas"></canvas>
+                <div id="dragDropArea">
+                    Drag & Drop an image here or paste from clipboard
+                </div>
+            </td>
+            <td>
+                <h2>RGB Bars</h2>
+                <div id="bars">
+                    <div id="redBar" class="bar">
+                        <div></div>
+                        <span>0</span>
+                    </div>
+                    <div id="greenBar" class="bar">
+                        <div></div>
+                        <span>0</span>
+                    </div>
+                    <div id="blueBar" class="bar">
+                        <div></div>
+                        <span>0</span>
+                    </div>
+                </div>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <h2>Closest Colors</h2>
+                <div id="colorComparison"></div>
+            </td>
+        </tr>
+    </table>
+
+    <script>
+        const imageInput = document.getElementById('imageInput');
+        const canvas = document.getElementById('imageCanvas');
+        const dragDropArea = document.getElementById('dragDropArea');
+        const redBar = document.getElementById('redBar').querySelector('div');
+        const greenBar = document.getElementById('greenBar').querySelector('div');
+        const blueBar = document.getElementById('blueBar').querySelector('div');
+        const redValue = document.getElementById('redBar').querySelector('span');
+        const greenValue = document.getElementById('greenBar').querySelector('span');
+        const blueValue = document.getElementById('blueBar').querySelector('span');
+        const colorComparison = document.getElementById('colorComparison');
+        const ctx = canvas.getContext('2d');
+
+        const colorNames = {
+            "Red": [255, 0, 0],
+            "Green": [0, 128, 0],
+            "Blue": [0, 0, 255],
+            "Yellow": [255, 255, 0],
+            "Cyan": [0, 255, 255],
+            "Magenta": [255, 0, 255],
+            "Black": [0, 0, 0],
+            "White": [255, 255, 255],
+            "Gray": [128, 128, 128],
+            "Orange": [255, 165, 0],
+            "Pink": [255, 192, 203],
+            "Brown": [165, 42, 42],
+            "Purple": [128, 0, 128],
+            "Lime": [50, 205, 50],
+            "Teal": [0, 128, 128],
+            "Navy": [0, 0, 128],
+            "Gold": [255, 215, 0],
+            "Beige": [245, 245, 220]
+        };
+
+        function calculateNorm(color1, color2) {
+            return Math.sqrt(
+                Math.pow(color1[0] - color2[0], 2) +
+                Math.pow(color1[1] - color2[1], 2) +
+                Math.pow(color1[2] - color2[2], 2)
+            );
+        }
+
+        function findClosestColors(r, g, b) {
+            const distances = Object.entries(colorNames).map(([name, rgb]) => {
+                return { name, distance: calculateNorm([r, g, b], rgb) };
+            });
+
+            distances.sort((a, b) => a.distance - b.distance);
+            return distances.slice(0, 3);
+        }
+
+        function loadImage(file) {
+            if (file) {
+                const img = new Image();
+                const reader = new FileReader();
+
+                reader.onload = (e) => {
+                    img.src = e.target.result;
+                };
+
+                img.onload = () => {
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    ctx.drawImage(img, 0, 0);
+                    dragDropArea.classList.add('hidden');
+                };
+
+                reader.readAsDataURL(file);
+            }
+        }
+
+        imageInput.addEventListener('change', (event) => {
+            loadImage(event.target.files[0]);
+        });
+
+        dragDropArea.addEventListener('dragover', (event) => {
+            event.preventDefault();
+        });
+
+        dragDropArea.addEventListener('drop', (event) => {
+            event.preventDefault();
+            const file = event.dataTransfer.files[0];
+            loadImage(file);
+        });
+
+        document.addEventListener('paste', (event) => {
+            const items = event.clipboardData.items;
+            for (let item of items) {
+                if (item.type.startsWith('image/')) {
+                    const file = item.getAsFile();
+                    loadImage(file);
+                    break;
+                }
+            }
+        });
+
+        canvas.addEventListener('mousemove', (event) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+
+            if (x >= 0 && x < canvas.width && y >= 0 && y < canvas.height) {
+                const imageData = ctx.getImageData(x, y, 1, 1).data;
+                const r = imageData[0];
+                const g = imageData[1];
+                const b = imageData[2];
+
+                redBar.style.height = `${r}px`;
+                greenBar.style.height = `${g}px`;
+                blueBar.style.height = `${b}px`;
+
+                redValue.textContent = r;
+                greenValue.textContent = g;
+                blueValue.textContent = b;
+
+                const closestColors = findClosestColors(r, g, b);
+                colorComparison.innerHTML = closestColors
+                    .map((c, index) => `${index + 1}: ${c.name} - ${c.distance.toFixed(2)}`)
+                    .join('<br>');
+            } else {
+                redBar.style.height = '0px';
+                greenBar.style.height = '0px';
+                blueBar.style.height = '0px';
+
+                redValue.textContent = '0';
+                greenValue.textContent = '0';
+                blueValue.textContent = '0';
+
+                colorComparison.innerHTML = '';
+            }
+        });
+    </script>
+</body>
+</html>
