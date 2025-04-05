@@ -17,6 +17,10 @@
 
 ![スクリーンショット](./images/screenshot.png)
 
+## URL
+
+https://kichouji.github.io/image-rgb-viewer/
+
 ## 動作環境
 
 - モダンなWebブラウザ（Chrome, Firefox, Safari, Edge等）
